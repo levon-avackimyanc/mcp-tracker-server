@@ -1,0 +1,16 @@
+# Сборка
+target/
+
+# Логи сервера (пишутся при каждом запуске)
+logs/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Локальные настройки Claude Code
+.claude/settings.local.json
+
+# macOS
+.DS_Store

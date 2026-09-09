@@ -1,0 +1,46 @@
+[ {
+  "name" : "create_item",
+  "description" : "Creates an item",
+  "inputSchema" : {
+    "$schema" : "https://json-schema.org/draft/2020-12/schema",
+    "properties" : {
+      "assignee" : {
+        "type" : "string"
+      },
+      "due_date" : {
+        "type" : "string"
+      },
+      "title" : {
+        "type" : "string"
+      }
+    },
+    "required" : [ "title", "assignee", "due_date" ],
+    "type" : "object"
+  }
+}, {
+  "name" : "get_report",
+  "description" : "Gets report",
+  "inputSchema" : {
+    "$schema" : "https://json-schema.org/draft/2020-12/schema",
+    "properties" : {
+      "period" : {
+        "type" : "string"
+      }
+    },
+    "required" : [ "period" ],
+    "type" : "object"
+  }
+}, {
+  "name" : "query_items",
+  "description" : "Searches tasks. The filter is a set of space-separated keywords matched against task title, assignee and status; a task matches when every keyword matches. Statuses: open, in_progress, done, overdue. Example: \"Алексей overdue\" finds overdue tasks assigned to Алексей.",
+  "inputSchema" : {
+    "$schema" : "https://json-schema.org/draft/2020-12/schema",
+    "properties" : {
+      "filter" : {
+        "type" : "string"
+      }
+    },
+    "required" : [ "filter" ],
+    "type" : "object"
+  }
+} ]

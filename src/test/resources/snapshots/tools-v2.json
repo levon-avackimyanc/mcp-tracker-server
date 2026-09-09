@@ -1,0 +1,86 @@
+[ {
+  "name" : "create_task",
+  "description" : "Create a new task in the tracker. Use this when the user asks to add, schedule or assign work. For changing an existing task use update_task; for finding tasks use search_tasks.",
+  "inputSchema" : {
+    "$schema" : "https://json-schema.org/draft/2020-12/schema",
+    "properties" : {
+      "assignee" : {
+        "description" : "Assignee name, e.g. \"Мария\"",
+        "type" : "string"
+      },
+      "due_date" : {
+        "description" : "Due date as ISO date, e.g. 2026-09-30. Convert relative dates (\"завтра\") to ISO first",
+        "type" : "string"
+      },
+      "title" : {
+        "description" : "Short task title",
+        "type" : "string"
+      }
+    },
+    "required" : [ "title" ],
+    "type" : "object"
+  }
+}, {
+  "name" : "get_task_report",
+  "description" : "Get aggregated task statistics: totals by status and by assignee. Use this for overview questions ('how many tasks are overdue?'). For finding individual tasks use search_tasks.",
+  "inputSchema" : {
+    "$schema" : "https://json-schema.org/draft/2020-12/schema",
+    "properties" : { },
+    "required" : [ ],
+    "type" : "object"
+  }
+}, {
+  "name" : "search_tasks",
+  "description" : "Search tasks in the tracker by assignee and/or status. Use this to find, count or list tasks — e.g. all overdue tasks for a person. All filters are optional and combined with AND; call without filters to list every task. For aggregated statistics use get_task_report instead.",
+  "inputSchema" : {
+    "$schema" : "https://json-schema.org/draft/2020-12/schema",
+    "properties" : {
+      "assignee" : {
+        "description" : "Exact assignee name, e.g. \"Алексей\"",
+        "type" : "string"
+      },
+      "due_before" : {
+        "description" : "Only tasks due strictly before this ISO date, e.g. 2026-09-30",
+        "type" : "string"
+      },
+      "status" : {
+        "description" : "Task status; \"overdue\" means the due date has passed",
+        "enum" : [ "open", "in_progress", "overdue", "done" ],
+        "type" : "string"
+      }
+    },
+    "required" : [ ],
+    "type" : "object"
+  }
+}, {
+  "name" : "update_task",
+  "description" : "Update fields of an existing task by its id (e.g. change status, due date or assignee). Find the task id via search_tasks first. For creating new tasks use create_task.",
+  "inputSchema" : {
+    "$schema" : "https://json-schema.org/draft/2020-12/schema",
+    "properties" : {
+      "assignee" : {
+        "description" : "New assignee name",
+        "type" : "string"
+      },
+      "due_date" : {
+        "description" : "New due date as ISO date, e.g. 2026-09-30",
+        "type" : "string"
+      },
+      "id" : {
+        "description" : "Task id, e.g. \"T-3\"",
+        "type" : "string"
+      },
+      "status" : {
+        "description" : "New status",
+        "enum" : [ "open", "in_progress", "overdue", "done" ],
+        "type" : "string"
+      },
+      "title" : {
+        "description" : "New task title",
+        "type" : "string"
+      }
+    },
+    "required" : [ "id" ],
+    "type" : "object"
+  }
+} ]

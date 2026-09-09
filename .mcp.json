@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "tracker": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "target/tracker-mcp.jar",
+        "--spring.profiles.active=v1"
+      ]
+    }
+  }
+}
