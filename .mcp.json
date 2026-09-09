@@ -4,7 +4,7 @@
       "command": "java",
       "args": [
         "-jar",
-        "target/tracker-mcp.jar",
+        "server-java/target/tracker-mcp.jar",
         "--spring.profiles.active=v1"
       ]
     }

@@ -1,0 +1,141 @@
+Профили: v1, v1err, v1b, v2 · сценарии: 3 · прогонов на сценарий: 10 · модель: haiku
+Всего прогонов: 120, параллельно: 3
+
+[  1/120] v1   overdue-alexey   OK   
+[  2/120] v1   overdue-alexey   OK   
+[  3/120] v1   overdue-alexey   OK   
+[  4/120] v1   overdue-alexey   OK   
+[  5/120] v1   overdue-alexey   FAIL в ответе не все три задачи
+[  6/120] v1   overdue-alexey   FAIL в ответе не все три задачи
+[  7/120] v1   overdue-alexey   OK   
+[  8/120] v1   overdue-alexey   OK   
+[  9/120] v1   overdue-alexey   OK   
+[ 10/120] v1   create-date      OK   
+[ 11/120] v1   overdue-alexey   OK   
+[ 12/120] v1   create-date      OK   
+[ 13/120] v1   create-date      OK   
+[ 14/120] v1   create-date      OK   
+[ 15/120] v1   create-date      OK   
+[ 16/120] v1   create-date      OK   
+[ 17/120] v1   create-date      OK   
+[ 18/120] v1   create-date      OK   
+[ 19/120] v1   create-date      OK   
+[ 20/120] v1   create-date      OK   
+[ 21/120] v1   tasks-per-person FAIL ожидалось {'Алексей': 4, 'Мария': 2, 'Иван': 2}, получено {}
+[ 22/120] v1   tasks-per-person OK   
+[ 23/120] v1   tasks-per-person OK   
+[ 24/120] v1   tasks-per-person OK   
+[ 25/120] v1   tasks-per-person OK   
+[ 26/120] v1   tasks-per-person OK   
+[ 27/120] v1   tasks-per-person OK   
+[ 28/120] v1   tasks-per-person OK   
+[ 29/120] v1   tasks-per-person OK   
+[ 30/120] v1   tasks-per-person OK   
+[ 31/120] v1err overdue-alexey   OK   
+[ 32/120] v1err overdue-alexey   OK   
+[ 33/120] v1err overdue-alexey   OK   
+[ 34/120] v1err overdue-alexey   OK   
+[ 35/120] v1err overdue-alexey   OK   
+[ 36/120] v1err overdue-alexey   OK   
+[ 37/120] v1err overdue-alexey   OK   
+[ 38/120] v1err overdue-alexey   FAIL в ответе не все три задачи
+[ 39/120] v1err overdue-alexey   OK   
+[ 40/120] v1err overdue-alexey   OK   
+[ 41/120] v1err create-date      OK   
+[ 42/120] v1err create-date      OK   
+[ 43/120] v1err create-date      OK   
+[ 44/120] v1err create-date      OK   
+[ 45/120] v1err create-date      OK   
+[ 46/120] v1err create-date      OK   
+[ 47/120] v1err create-date      OK   
+[ 48/120] v1err create-date      OK   
+[ 49/120] v1err create-date      OK   
+[ 50/120] v1err tasks-per-person OK   
+[ 51/120] v1err create-date      OK   
+[ 52/120] v1err tasks-per-person OK   
+[ 53/120] v1err tasks-per-person OK   
+[ 54/120] v1err tasks-per-person OK   
+[ 55/120] v1err tasks-per-person OK   
+[ 56/120] v1err tasks-per-person OK   
+[ 57/120] v1err tasks-per-person OK   
+[ 58/120] v1err tasks-per-person OK   
+[ 59/120] v1err tasks-per-person OK   
+[ 60/120] v1err tasks-per-person OK   
+[ 61/120] v1b  overdue-alexey   OK   
+[ 62/120] v1b  overdue-alexey   OK   
+[ 63/120] v1b  overdue-alexey   OK   
+[ 64/120] v1b  overdue-alexey   OK   
+[ 65/120] v1b  overdue-alexey   OK   
+[ 66/120] v1b  overdue-alexey   OK   
+[ 67/120] v1b  overdue-alexey   OK   
+[ 68/120] v1b  overdue-alexey   OK   
+[ 69/120] v1b  overdue-alexey   OK   
+[ 70/120] v1b  overdue-alexey   OK   
+[ 71/120] v1b  create-date      OK   
+[ 72/120] v1b  create-date      OK   
+[ 73/120] v1b  create-date      OK   
+[ 74/120] v1b  create-date      OK   
+[ 75/120] v1b  create-date      OK   
+[ 76/120] v1b  create-date      OK   
+[ 77/120] v1b  create-date      OK   
+[ 78/120] v1b  create-date      OK   
+[ 79/120] v1b  create-date      OK   
+[ 80/120] v1b  tasks-per-person OK   
+[ 81/120] v1b  create-date      OK   
+[ 82/120] v1b  tasks-per-person OK   
+[ 83/120] v1b  tasks-per-person OK   
+[ 84/120] v1b  tasks-per-person OK   
+[ 85/120] v1b  tasks-per-person OK   
+[ 86/120] v1b  tasks-per-person OK   
+[ 87/120] v1b  tasks-per-person OK   
+[ 88/120] v1b  tasks-per-person OK   
+[ 89/120] v1b  tasks-per-person OK   
+[ 90/120] v2   overdue-alexey   OK   
+[ 91/120] v2   overdue-alexey   OK   
+[ 92/120] v1b  tasks-per-person OK   
+[ 93/120] v2   overdue-alexey   OK   
+[ 94/120] v2   overdue-alexey   OK   
+[ 95/120] v2   overdue-alexey   OK   
+[ 96/120] v2   overdue-alexey   OK   
+[ 97/120] v2   overdue-alexey   OK   
+[ 98/120] v2   overdue-alexey   OK   
+[ 99/120] v2   overdue-alexey   OK   
+[100/120] v2   overdue-alexey   OK   
+[101/120] v2   create-date      OK   
+[102/120] v2   create-date      OK   
+[103/120] v2   create-date      OK   
+[104/120] v2   create-date      OK   
+[105/120] v2   create-date      OK   
+[106/120] v2   create-date      OK   
+[107/120] v2   create-date      OK   
+[108/120] v2   create-date      OK   
+[109/120] v2   create-date      OK   
+[110/120] v2   create-date      OK   
+[111/120] v2   tasks-per-person OK   
+[112/120] v2   tasks-per-person OK   
+[113/120] v2   tasks-per-person OK   
+[114/120] v2   tasks-per-person OK   
+[115/120] v2   tasks-per-person OK   
+[116/120] v2   tasks-per-person OK   
+[117/120] v2   tasks-per-person OK   
+[118/120] v2   tasks-per-person OK   
+[119/120] v2   tasks-per-person OK   
+[120/120] v2   tasks-per-person OK   
+
+================================================================
+SUCCESS RATE (успехов из 10)
+================================================================
+сценарий              v1   v1err     v1b      v2
+----------------------------------------------------------------
+overdue-alexey      8/10    9/10   10/10   10/10
+  вызовов            5.2     6.6     1.0     1.0
+create-date        10/10   10/10   10/10   10/10
+  вызовов            2.2     2.0     2.7     1.0
+tasks-per-person    9/10   10/10   10/10   10/10
+  вызовов            2.4     2.5     1.8     1.0
+----------------------------------------------------------------
+ИТОГО                90%     97%    100%    100%
+
+Стоимость прогона: $1.47
+
+Сырые прогоны: eval/results/20260722-003742-haiku.jsonl

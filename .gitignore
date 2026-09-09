@@ -1,13 +1,25 @@
 # Сборка
-target/
+server-java/target/
 
 # Логи сервера (пишутся при каждом запуске)
 logs/
+server-java/logs/
 
-# IDE
+# Материалы доклада: слайды, скриншоты, план — не для публичного репозитория
+talk/
+
+# Черновые прогоны eval: в репозитории лежат только два полных прогона,
+# на которых построены отчёты в eval/results/report-*.txt
+eval/results/*.jsonl
+!eval/results/20260722-002919-sonnet.jsonl
+!eval/results/20260722-003742-haiku.jsonl
+
+# IDE и локальные инструменты
 .idea/
 *.iml
 .vscode/
+.obsidian/
+.serena/
 
 # Локальные настройки Claude Code
 .claude/settings.local.json
