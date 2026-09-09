@@ -1,6 +1,5 @@
 # tracker-mcp
 
-[![build](https://github.com/levon-avackimyanc/mcp-tracker-server/actions/workflows/build.yml/badge.svg)](https://github.com/levon-avackimyanc/mcp-tracker-server/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 MCP-сервер трекера задач на Spring Boot — демо-стенд к докладу
@@ -110,6 +109,3 @@ scripts/mcp-stdio.py            минимальный stdio-клиент MCP
 .mcp.json                       регистрация сервера в Claude Code
 ```
 
-## Лицензия
-
-[MIT](LICENSE).
