@@ -1,0 +1,771 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Когда пользователь — не человек — доклад для QA</title>
+<style>
+  :root{
+    --ink:#14171F; --panel:#1D222D; --panel2:#232937; --line:#2E3542;
+    --text:#E9ECF2; --muted:#98A1B3; --dim:#5C6577;
+    --amber:#E8A33D; --amber-soft:rgba(232,163,61,.12);
+    --ok:#4FC38A; --bad:#E0564F;
+    --sans:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--text);font-family:var(--sans);overflow:hidden;height:100%}
+  /* ---------- stage: fixed 1280x720, scaled to viewport ---------- */
+  #stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center;background:var(--ink)}
+  .slide{display:none;position:absolute;inset:0;flex-direction:column;padding:56px 72px 64px;box-sizing:border-box}
+  .slide.on{display:flex}
+  @media (prefers-reduced-motion: no-preference){
+    .slide.on{animation:in .25s ease-out}
+    @keyframes in{from{opacity:0}to{opacity:1}}
+  }
+  /* ---------- chrome ---------- */
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:22px}
+  .eyebrow b{color:var(--amber);font-weight:500}
+  h1{font-size:34px;line-height:1.15;margin:0 0 26px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+  h1 .hl{color:var(--amber)}
+  #bar{position:fixed;left:0;bottom:0;height:3px;background:var(--amber);width:0;transition:width .2s}
+  #count{position:fixed;right:16px;bottom:10px;font-family:var(--mono);font-size:12px;color:var(--dim)}
+  #notes{position:fixed;left:0;right:0;bottom:0;max-height:34vh;overflow:auto;background:var(--panel);border-top:1px solid var(--line);padding:14px 24px 18px;font-size:15px;line-height:1.5;color:var(--muted);display:none}
+  #notes.show{display:block}
+  #notes strong{color:var(--text)}
+  .notes{display:none}
+  /* ---------- content atoms ---------- */
+  .cols{display:flex;gap:28px;flex:1;min-height:0}
+  .col{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px 24px}
+  .lbl{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+  ul.pts{margin:0;padding-left:20px;font-size:19px;line-height:1.55;display:flex;flex-direction:column;gap:10px}
+  ul.pts li::marker{color:var(--amber)}
+  .small{font-size:15px;color:var(--muted);line-height:1.5}
+  code,pre{font-family:var(--mono)}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 18px;font-size:15px;line-height:1.55;overflow-x:auto;margin:0}
+  pre .c{color:var(--dim)} pre .s{color:var(--ok)} pre .k{color:var(--amber)}
+  .good{color:var(--ok)} .badc{color:var(--bad)} .acc{color:var(--amber)}
+  .banner{margin-top:auto;background:var(--amber-soft);border:1px solid rgba(232,163,61,.35);border-radius:6px;padding:14px 20px;font-size:19px;font-weight:600;text-align:center}
+  /* ---------- screenshot placeholders ---------- */
+  .shot{margin:0;flex:1;min-height:120px;border:1.5px dashed rgba(232,163,61,.5);border-radius:6px;background:var(--amber-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center;position:relative}
+  .shot .shot-tag{font-family:var(--mono);font-size:13px;letter-spacing:.14em;color:var(--amber);text-transform:uppercase}
+  .shot .shot-desc{font-size:14px;color:var(--muted);max-width:46ch;line-height:1.45}
+  .shot img{display:none}
+  .shot.has-img{border:1px solid var(--line);background:var(--panel);padding:6px}
+  .shot.has-img img{display:block;max-width:100%;max-height:100%;object-fit:contain;border-radius:3px}
+  .shot.has-img .shot-tag,.shot.has-img .shot-desc{display:none}
+  /* ---------- diagrams ---------- */
+  .chain{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:14px;flex-wrap:nowrap}
+  .chain .node{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:12px 14px;text-align:center;line-height:1.35;flex:1}
+  .chain .node em{display:block;font-style:normal;color:var(--muted);font-size:12px;margin-top:3px}
+  .chain .arr{color:var(--amber);font-size:18px;flex:0 0 auto}
+  table.tbl{border-collapse:collapse;width:100%;font-size:17px}
+  table.tbl th{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:left;padding:8px 14px;border-bottom:1px solid var(--line)}
+  table.tbl td{padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+  table.tbl tr.hi td{background:var(--amber-soft)}
+  /* таблицы eval-прогонов: числа в моно, строка «вызовов» — подстрочником к success rate */
+  table.tbl.ev{font-family:var(--mono);font-size:15px}
+  table.tbl.ev th{padding:5px 9px;text-align:right}
+  table.tbl.ev td{padding:6px 9px;text-align:right;border-bottom:none}
+  table.tbl.ev th:first-child,table.tbl.ev td:first-child{text-align:left}
+  table.tbl.ev td.g{color:var(--ok)} table.tbl.ev td.b{color:var(--bad)}
+  table.tbl.ev tr.calls td{color:var(--dim);font-size:12.5px;padding-top:0;padding-bottom:8px}
+  table.tbl.ev caption{caption-side:top;text-align:left;font-family:var(--mono);font-size:12px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--amber);padding-bottom:6px}
+  .fails{display:flex;gap:20px;margin-top:26px}
+  .fail{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 20px}
+  .fail b{display:block;font-size:20px;margin-bottom:6px}
+  .fail .n{font-family:var(--mono);color:var(--amber);font-size:13px;letter-spacing:.12em;display:block;margin-bottom:8px}
+  .rate{display:flex;gap:5px;margin-top:14px}
+  .rate i{flex:1;height:26px;border-radius:3px;background:var(--ok)}
+  .rate i.f{background:var(--bad)}
+  .xmark{color:var(--bad);font-weight:700} .vmark{color:var(--ok);font-weight:700}
+  .check{margin:0;padding:0;list-style:none;columns:2;column-gap:40px;font-size:16.5px;line-height:1.45}
+  .check li{margin-bottom:11px;break-inside:avoid;display:flex;gap:10px}
+  .check li i{font-style:normal;font-family:var(--mono);color:var(--amber);font-size:13px;padding-top:2px}
+  .diffline{display:block}
+  .diffline.del{color:var(--bad)} .diffline.add{color:var(--ok)}
+  /* title slide */
+  .title-wrap{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .title-wrap h1{font-size:58px;line-height:1.08;margin:0 0 18px;font-weight:700;letter-spacing:-.02em;max-width:20ch}
+  .title-wrap .sub{font-size:26px;color:var(--muted);max-width:38ch;line-height:1.4;text-wrap:balance}
+  .title-meta{margin-top:auto;font-family:var(--mono);font-size:15px;color:var(--dim);display:flex;justify-content:space-between}
+  .keys{font-family:var(--mono);font-size:12px;color:var(--dim)}
+  .thesis{font-size:30px;line-height:1.35;font-weight:600;text-wrap:balance;max-width:34ch}
+</style>
+
+<div id="stage"></div>
+<div id="bar"></div><div id="count"></div><div id="notes"></div>
+
+<template id="slides">
+
+<!-- ===== 01 ===== -->
+<section class="slide" data-block="Открытие">
+  <div class="title-wrap">
+    <div class="eyebrow" style="margin-bottom:40px"><span>Доклад · QA</span><span>MCP · тестирование</span></div>
+    <h1>Когда пользователь — не&nbsp;человек</h1>
+    <div class="sub">Тестирование <span class="acc">MCP</span>-серверов</div>
+  </div>
+  <div class="title-meta"><span>Левон Авакимянц · Сбер</span><span class="keys">← → листать · N — заметки докладчика</span></div>
+  <aside class="notes">Ничего не говорим — сразу переключаем на следующий слайд: с ходу задаём рамку доклада — чем мир агентов отличается от привычного.</aside>
+</section>
+
+<!-- ===== 02 ===== -->
+<section class="slide" data-block="Два мира">
+  <div class="eyebrow"><span>Два мира</span><span>02 / 24</span></div>
+  <h1>Два мира API: у привычного и у агентского — <span class="hl">разные контракты</span></h1>
+  <div class="cols">
+    <div class="col card">
+      <div class="lbl">REST / привычный мир</div>
+      <ul class="pts">
+        <li>Контракт = OpenAPI-схема</li>
+        <li>Description — декорация: перепишите как угодно, ни один клиент не сломается</li>
+        <li>Потребитель — код</li>
+        <li>Тест проверяет <b>код</b> — вердикт <b class="good">pass / fail</b></li>
+      </ul>
+    </div>
+    <div class="col card" style="border-color:rgba(232,163,61,.4)">
+      <div class="lbl" style="color:var(--amber)">MCP / мир агентов</div>
+      <ul class="pts">
+        <li>Контракт = схема <b>+ description</b></li>
+        <li>Текст исполняем: формулировка меняет поведение системы</li>
+        <li>Потребитель — модель</li>
+        <li>Тест проверяет ещё и <b>текст</b> — вердикт <b class="acc">success rate</b></li>
+      </ul>
+    </div>
+  </div>
+  <div class="banner">Изменение description = breaking change, который не ловит ни один существующий тест</div>
+  <aside class="notes">С этого и начнём — чем мир агентов отличается от привычного. В API для людей контракт — это схема: description в OpenAPI можно переписать как угодно, ни один клиент не сломается, потому что потребитель — код. В API для агентов потребитель — <strong>модель, и она читает текст</strong>. Поэтому контракт здесь — схема плюс description: переформулируете описание — поведение системы изменится, хотя логика не тронута. Значит, изменение description — breaking change, который не ловит ни один существующий тест. Из этого различия вырастает весь доклад.</aside>
+</section>
+
+<!-- ===== 03 ===== -->
+<section class="slide" data-block="Два мира">
+  <div class="eyebrow"><span>Два мира</span><span>03 / 24</span></div>
+  <h1>Значит, и тест другой — <span class="hl">не pass/fail, а success rate</span></h1>
+  <div class="cols">
+    <div class="col card">
+      <div class="lbl">Классический тест</div>
+      <ul class="pts" style="font-size:17px">
+        <li>Вход → выход <b>детерминирован</b></li>
+        <li>Вердикт: <b class="good">pass</b> / <b class="badc">fail</b></li>
+        <li>Проверяем поведение <b>кода</b></li>
+        <li>Один прогон — и есть ответ</li>
+      </ul>
+    </div>
+    <div class="col card" style="border-color:rgba(232,163,61,.4)">
+      <div class="lbl" style="color:var(--amber)">Тест агентного взаимодействия</div>
+      <ul class="pts" style="font-size:17px">
+        <li>Тот же вход → выход <b>варьируется</b></li>
+        <li>Вердикт: <b class="acc">success rate</b> — частота, не булево</li>
+        <li>Проверяем ещё и <b>текст, который читает модель</b></li>
+        <li>Нужно N прогонов, чтобы измерить</li>
+      </ul>
+      <div class="rate"><i class="f"></i><i></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i class="f"></i><i class="f"></i><i></i><i class="f"></i></div>
+      <div class="small" style="margin-top:10px">Пример: один сервер, один запрос — <b>3 успеха из 10</b>. Откуда цифра — увидим дальше.</div>
+    </div>
+  </div>
+  <aside class="notes">Вторая половина рамки — и ключевое различие для тестировщика. Слева мир, в котором мы живём: один вход даёт один выход, вердикт булев — pass или fail. Справа агент: тот же запрос модель может отработать по-разному, поэтому «вызывает тул правильно» — не да/нет, а <strong>частота, success rate</strong>. И проверяем мы теперь не только код, но и <strong>текст, который модель читает</strong>. Для тестировщика это звучит непривычно, но это нормальный измеримый режим. Держим контраст в голове — а теперь смотрим, что бывает, когда правый мир тестируют инструментами левого.</aside>
+</section>
+
+<!-- ===== 04 ===== -->
+<section class="slide" data-block="Открытие">
+  <div class="eyebrow"><span>Открытие</span><span>04 / 24</span></div>
+  <h1>Тесты зелёные. <span class="badc">Продукт не работает.</span></h1>
+  <div class="cols">
+    <div class="col">
+      <figure class="shot" data-src="shots/shot-1.png">
+        <div class="shot-tag">Скрин №1</div>
+        <div class="shot-desc">Терминал: прогон тестов — «Tests run: 26, Failures: 0 · BUILD SUCCESS · Coverage 78%». Крупно, зелёное.</div>
+      </figure>
+    </div>
+    <div class="col">
+      <figure class="shot" data-src="shots/shot-2.png">
+        <div class="shot-tag">Скрин №2</div>
+        <div class="shot-desc">Диалог с агентом: «Найди все просроченные задачи Алексея» → вызов <code>query_items(filter: "assignee=Алексей AND status=overdue")</code> → <code>[]</code> → «У Алексея нет просроченных задач». Виден вызов и пустой ответ. Подпись: «в базе их три».</div>
+      </figure>
+    </div>
+  </div>
+  <aside class="notes">Рамка задана — теперь обещанная проблема, ровно на стыке двух миров. <strong>Слева</strong> — прогон тестов MCP-сервера, интеграции трекера задач с ИИ-ассистентом. Всё зелёное, покрытие под 80%. Отдаём в прод? <strong>(пауза 3 сек)</strong> Мы отдали. <strong>Справа</strong> — первый пользовательский сценарий. Обратите внимание: агент не растерялся и не сообщил об ошибке. Он нашёл нужный тул, вызвал его и уверенно ответил пользователю. Ответ неверный: просроченных задач у Алексея три. Сервер вернул пустой список, потому что не понял формат фильтра, — и промолчал об этом. Такой отказ хуже честной ошибки: он выглядит как нормальный ответ, его не видно ни в логах, ни в мониторинге. Все тесты прошли — продукт не работает. И баг не находится ни в одной строчке кода.</aside>
+</section>
+
+<!-- ===== 05 ===== -->
+<section class="slide" data-block="Открытие">
+  <div class="eyebrow"><span>Открытие · под капотом</span><span>05 / 24</span></div>
+  <h1>Код <span class="good">зелёный</span>. Тот же тул через агента — <span class="badc">пустой ответ</span></h1>
+  <div class="cols">
+    <div class="col">
+      <div class="lbl">Юнит-тест тула · ToolBehaviourTest (v1)</div>
+<pre style="font-size:12px"><span class="c">// формат, который ждёт код → находит</span>
+<span class="k">@Test</span> void findsTasksByKeywordFilter() {
+  var r = tools.queryItems(<span class="s">"Алексей overdue"</span>);
+  assertThat(text(r)).contains(<span class="s">"T-1"</span>,<span class="s">"T-2"</span>,<span class="s">"T-3"</span>); <span class="c">// ✅ 3 задачи</span>
+}
+<span class="c">// формат, что агент придумал по описанию</span>
+<span class="k">@Test</span> void agentGuessedFilterFindsNothing() {
+  var r = tools.queryItems(<span class="s">"assignee=Алексей AND status=overdue"</span>);
+  assertThat(isError(r)).isFalse();
+  assertThat(text(r)).isEqualTo(<span class="s">"[]"</span>);        <span class="c">// ✅ тоже зелёный!</span>
+}</pre>
+      <div class="small">Тот же тул, тот же стор. Верный формат находит три задачи — <b>код исправен</b>. Формат агента даёт молчаливый <code>[]</code>, и это <b>штатное поведение</b>.</div>
+    </div>
+    <div class="col">
+      <div class="lbl">Тот же тул — глазами агента</div>
+<pre style="font-size:12.5px"><span class="k">@McpTool</span>(name=<span class="s">"query_items"</span>,
+  description=<span class="badc">"Queries items using filter"</span>)  <span class="c">// ← всё, что видит агент</span>
+CallToolResult queryItems(String filter)</pre>
+      <div class="chain" style="flex-direction:column;align-items:stretch;gap:8px;margin-top:8px">
+        <div class="node" style="text-align:left">«Найди все просроченные задачи Алексея»</div>
+        <div class="arr" style="align-self:center;font-size:14px">↓ формат не описан — агент подставляет произвольный</div>
+        <div class="node" style="text-align:left;border-color:rgba(224,86,79,.45)"><code>query_items(filter:<br>&nbsp;&nbsp;"assignee=Алексей AND status=overdue")</code></div>
+        <div class="arr" style="align-self:center">↓</div>
+        <div class="node" style="text-align:left"><span class="badc">[]</span> → «Просроченных задач нет»</div>
+      </div>
+    </div>
+  </div>
+  <div class="banner">Юнит-тест проверяет <b>код</b> — он исправен. Сценарий ломает <b>описание</b>, а его этот тест не видит</div>
+  <aside class="notes">Спускаемся под капот того же бага. <strong>Слева — реальный юнит-тест нашего тула</strong>, ToolBehaviourTest. Первый метод доказывает, что <strong>код исправен</strong>: зовём queryItems в формате, который он ждёт, — «Алексей overdue», два ключевых слова через пробел, — и получаем ровно три задачи, T-1, T-2, T-3. Второй метод — тот же тул, но с той самой строкой, которую по описанию придумал агент: «assignee=Алексей AND status=overdue». Подстрочный поиск не находит ничего, возвращается пустой список, и тест на это <strong>тоже зелёный</strong>: он фиксирует, что код отработал без ошибки. Вот ловушка — тот же тул, тот же стор, разница только в формате аргумента, и оба теста зелёные. <strong>Справа — тот же тул глазами агента:</strong> всё, что модель про него знает, — имя, схема {filter: string} и описание «Queries items using filter». Про формат фильтра ни слова. Поэтому агент подставляет произвольный фильтр вида assignee=Алексей AND status=overdue, подстрочный поиск по нему не находит ничего, и наружу уходит пустой список. Код зелёный — сценарий сломан описанием.</aside>
+</section>
+
+<!-- ===== 06 ===== -->
+<section class="slide" data-block="Открытие">
+  <div class="eyebrow"><span>Открытие · один запрос сквозь слои</span><span>06 / 24</span></div>
+  <h1>Анатомия запроса: где именно <span class="hl">теряется смысл</span></h1>
+  <div class="chain">
+    <div class="node">Пользователь<em>«просроченные задачи Алексея»</em></div><div class="arr">→</div>
+    <div class="node" style="border-color:rgba(224,86,79,.45)">Агент · host<em>видит только description + schema → подставляет произвольный аргумент</em></div><div class="arr">→</div>
+    <div class="node">MCP-сервер · тул<em>query_items(filter) → поиск по словам через пробел, найтись должны все</em></div><div class="arr">→</div>
+    <div class="node">Наружу · данные<em>TaskStore: совпадений нет</em></div>
+  </div>
+  <div class="cols" style="margin-top:24px;flex:0 1 auto">
+    <div class="col card" style="border-color:rgba(224,86,79,.4)">
+      <div class="lbl" style="color:var(--bad)">что видит агент на втором шаге</div>
+<pre style="font-size:13px"><span class="badc">"description": "Queries items using filter"</span>
+<span class="c">// про формат фильтра — ни слова</span>
+→ агент подставляет <span class="badc">"assignee=Алексей AND status=overdue"</span></pre>
+    </div>
+    <div class="col card">
+      <div class="lbl">обратный путь — наружу к пользователю</div>
+      <div class="small" style="font-size:16px"><code>[]</code> → агент → <b>«Просроченных задач нет»</b>. Ни исключения, ни красной строки в логах — <span class="badc">молчаливо неверный ответ</span>.</div>
+    </div>
+  </div>
+  <div class="banner">Между «что просил пользователь» и «что вызвать» стоит единственный ориентир — <b>description</b>. Плохой текст → неверный вызов</div>
+  <aside class="notes">Тот же провал одной картинкой — как запрос идёт сквозь слои. Пользователь просит на естественном языке. <strong>Агент внутри хоста</strong> — единственное, на что он опирается, это description и схема; по ним генерирует аргумент. Дальше вызов уходит в MCP-сервер: наш тул query_items разбивает фильтр на слова по пробелам и ищет задачи, где нашлись все слова разом. Строку агента «assignee=Алексей AND status=overdue» он тоже бьёт по пробелам — и ни одного из этих кусков в данных нет, поэтому ноль совпадений. Пустой список возвращается тем же путём обратно, агент рапортует «просроченных нет». <strong>Обратите внимание на подсвеченный узел:</strong> смысл теряется ровно на одном шаге — там, где агент по описанию решает, что и с какими аргументами вызвать. Это и есть точка, ради которой весь доклад: между намерением пользователя и вызовом стоит только текст описания.</aside>
+</section>
+
+<!-- ===== 07 ===== -->
+<section class="slide" data-block="Открытие">
+  <div class="eyebrow"><span>Открытие</span><span>07 / 24</span></div>
+  <h1>Кто я и о чём доклад</h1>
+  <div class="cols">
+    <div class="col" style="flex:0 0 300px">
+      <figure class="shot" data-src="shots/photo.png" style="max-height:300px">
+        <div class="shot-tag">Фото</div>
+        <div class="shot-desc">Портрет докладчика</div>
+      </figure>
+      <div class="small">Левон Авакимянц,<br>Senior AQA, Сбер<br>Развиваю тестирование ИИ-агентов и инструментов для агентов.</div>
+    </div>
+    <div class="col" style="justify-content:center">
+      <div class="thesis">Основной пользователь MCP-сервера — <span class="acc">ИИ-агент</span>.<br><br>Description тула — <span class="acc">исполняемая часть контракта</span>.</div>
+    </div>
+  </div>
+  <aside class="notes">Представиться (30 сек). Сегодня разберём: что агент видит, когда решает вызвать ваш код; почему одно слово в description меняет поведение системы; и как поставить текст под тестовый контроль. <strong>Спойлер:</strong> баг с предыдущего слайда мы починим, не тронув ни строчки логики.</aside>
+</section>
+
+<!-- ===== 08 ===== -->
+<section class="slide" data-block="MCP">
+  <div class="eyebrow"><span>MCP тезисно</span><span>08 / 24</span></div>
+  <h1>Каждый ассистент к каждой системе — <span class="hl">интеграции не масштабируются</span></h1>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <div class="lbl">5 ассистентов, 10 систем</div>
+        <div style="font-size:18px;line-height:1.7;margin-top:6px">
+          Каждую пару пишем отдельно — <b class="badc">50 интеграций</b>.<br>
+          Новая система — ещё <b class="badc">+5</b>.
+        </div>
+        <div style="height:1px;background:var(--line);margin:14px 0"></div>
+        <div style="font-size:18px;line-height:1.7">
+          Общий протокол: каждый реализует его один раз — <b class="good">15</b>.<br>
+          Новая система — <b class="good">+1</b>.
+        </div>
+        <div class="small" style="margin-top:12px">Формально: <b class="badc">N×M</b> → <b class="good">N+M</b> — общий протокол вместо своей интеграции на каждую пару.</div>
+      </div>
+      <ul class="pts" style="font-size:16px">
+        <li>Открытый стандарт (Anthropic, 2024)</li>
+        <li>Поддержан: Claude, ChatGPT, Cursor, VS Code, JetBrains</li>
+      </ul>
+    </div>
+    <div class="col">
+      <div class="lbl">Кто с кем разговаривает</div>
+      <div class="chain" style="flex-direction:column;align-items:stretch">
+        <div class="node">Хост<em>Claude Desktop, Cursor, VS Code — модель живёт здесь. Пишете не вы</em></div>
+        <div class="arr" style="align-self:center">⇅ JSON-RPC 2.0 · stdio или HTTP</div>
+        <div class="node" style="border-color:rgba(232,163,61,.45)">MCP-сервер<em>это пишете вы — обычный процесс или веб-сервис</em></div>
+        <div class="arr" style="align-self:center">⇅</div>
+        <div class="node">Ваша система<em>БД · API · файлы</em></div>
+      </div>
+    </div>
+  </div>
+  <div class="banner">MCP-сервер — обычная детерминированная программа. Непредсказуемость этажом выше, в хосте</div>
+  <aside class="notes">Задача, ради которой протокол появился. Раньше каждый ассистент интегрировался с каждой системой отдельно: пять ассистентов на десять систем — пятьдесят кастомных интеграций, и каждая новая система добавляет ещё пять. Общий протокол превращает это в пятнадцать: каждая сторона реализует его один раз, новая система стоит одну работу вместо пяти. Записывают это как «N×M превращается в N+M»: общий протокол вместо отдельной интеграции на каждую пару. <strong>Справа — кто с кем разговаривает.</strong> Хост это Claude Desktop, Cursor, VS Code; внутри него живёт модель, и пишете его не вы. Подсвечена ваша часть: MCP-сервер, обычный процесс, который общается с хостом по JSON-RPC и обращается к вашей системе. <strong>И главное для нас — внизу:</strong> сервер детерминирован, его можно тестировать привычными средствами. Вся непредсказуемость этажом выше. Именно поэтому дальше выяснится, что привычных средств не хватает.</aside>
+</section>
+
+<!-- ===== 09 ===== -->
+<section class="slide" data-block="MCP">
+  <div class="eyebrow"><span>MCP тезисно</span><span>09 / 24</span></div>
+  <h1>Три примитива. У tools инициатор — <span class="hl">модель</span></h1>
+  <table class="tbl">
+    <tr><th>Примитив</th><th>Что это</th><th>Кто инициирует</th></tr>
+    <tr class="hi"><td><code>tools</code></td><td>Действия: найти задачи, создать тикет, отправить письмо</td><td><b class="acc">Модель — сама</b></td></tr>
+    <tr><td><code>resources</code></td><td>Данные для контекста</td><td>Приложение</td></tr>
+    <tr><td><code>prompts</code></td><td>Готовые шаблоны</td><td>Пользователь</td></tr>
+  </table>
+  <div class="banner">Модель сама решает: вызвать ли ваш код, какой тул, с какими аргументами</div>
+  <aside class="notes">Сервер предоставляет три вида примитивов: resources — данные, читает приложение; prompts — шаблоны, выбирает человек; tools — действия. <strong>Ключевая колонка — кто инициирует:</strong> у tools это модель. Она сама решает, вызвать ли ваш код, какой тул и с какими аргументами. Из этого факта вырастает весь доклад.</aside>
+</section>
+
+<!-- ===== 10 ===== -->
+<section class="slide" data-block="MCP">
+  <div class="eyebrow"><span>MCP тезисно</span><span>10 / 24</span></div>
+  <h1>Ваш сервер для агента — <span class="hl">вот этот текст</span>. Другого интерфейса нет</h1>
+  <div class="cols">
+    <div class="col">
+      <div class="lbl">Один тул = имя + описание + схема</div>
+<pre>{
+  "name": "query_items",
+  <span class="k">"description": "Queries items using filter"</span>,
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "filter": { "type": "string" }
+    }
+  }
+}</pre>
+    </div>
+    <div class="col">
+      <div class="lbl">…и таких в контексте модели — весь tools/list</div>
+<pre style="font-size:10px;line-height:1.5;color:var(--muted);flex:1;overflow:hidden">{"name":"query_items","description":"Queries items using filter","inputSchema":{...}}
+{"name":"create_item","description":"Creates an item","inputSchema":{"title":...,"due_date":...}}
+{"name":"update_item","description":"Updates an item","inputSchema":{"id":...,"fields":...}}
+{"name":"get_report","description":"Gets report","inputSchema":{"period":...}}
+{"name":"delete_item","description":"Deletes an item by id","inputSchema":{"id":...}}
+{"name":"list_users","description":"Lists users","inputSchema":{}}
+… и ещё N тулов от других подключённых серверов —
+все конкурируют за выбор модели в одном контексте</pre>
+      <div class="small">Модель не «подключается к API» — она <b>читает</b>. Заметьте, сколько здесь естественного языка.</div>
+    </div>
+  </div>
+  <aside class="notes">Тул — три вещи: имя, описание, схема входа. Когда пользователь пишет агенту, в контекст модели попадает весь tools/list как текст — вот этот список справа. Модель не «подключается к API», она читает. Ваш сервер для агента — этот текст и ничего кроме.</aside>
+</section>
+
+<!-- ===== 11 ===== -->
+<section class="slide" data-block="MCP">
+  <div class="eyebrow"><span>Цикл выбора тула</span><span>11 / 24</span></div>
+  <h1>Как агент решает — и где это ломается</h1>
+  <div class="chain">
+    <div class="node">Задача<br>пользователя</div><div class="arr">→</div>
+    <div class="node">Сопоставляет<br>с описаниями</div><div class="arr">→</div>
+    <div class="node">Выбирает тул<br><em>или нет</em></div><div class="arr">→</div>
+    <div class="node">Генерирует<br>аргументы</div><div class="arr">→</div>
+    <div class="node">Читает результат<br>/ ошибку</div><div class="arr">⟲</div>
+  </div>
+  <div class="fails">
+    <div class="fail"><span class="n">Точка отказа 1</span><b>Не выбрал</b><span class="small">тул невидим или неотличим от соседних</span></div>
+    <div class="fail"><span class="n">Точка отказа 2</span><b>Не так вызвал</b><span class="small">аргументы неверного формата</span></div>
+    <div class="fail"><span class="n">Точка отказа 3</span><b>Не так понял ответ</b><span class="small">не смог продолжить работу</span></div>
+  </div>
+  <aside class="notes">Цикл агента: сопоставил задачу с описаниями — заметьте, тулы <strong>конкурируют между собой</strong>, — выбрал, сгенерировал аргументы, прочитал ответ, решил, что дальше. На каждом шаге он опирается только на текст. Ломается цикл в трёх местах. Наш баг из открытия — точка один: тул был невидим. Эти три точки — карта доклада.</aside>
+</section>
+
+<!-- ===== 12 ===== -->
+<section class="slide" data-block="Главный тезис">
+  <div class="eyebrow"><span>Главный тезис</span><span>12 / 24</span></div>
+  <h1>Исправление — одна строка, и это <span class="hl">не код</span></h1>
+  <div class="cols">
+    <div class="col">
+      <figure class="shot" data-src="shots/shot-3.png">
+        <div class="shot-tag">Скрин №3</div>
+        <div class="shot-desc">Дифф снимков контракта tools-v1.json → tools-v1b.json, ровно одна изменённая строка: красная "description": "Queries items using filter" → зелёная "description": "Searches tasks. The filter is a set of space-separated keywords matched against task title, assignee and status; a task matches when every keyword matches. Statuses: open, in_progress, done, overdue. Example: \"Алексей overdue\" finds overdue tasks assigned to Алексей."</div>
+      </figure>
+    </div>
+    <div class="col">
+      <figure class="shot" data-src="shots/shot-4.png">
+        <div class="shot-tag">Скрин №4</div>
+        <div class="shot-desc">Тот же диалог, что на скрине №2, но профиль v1b: агент вызывает query_items(filter: "Алексей overdue") с первого раза → список из 3 просроченных задач Алексея.</div>
+      </figure>
+    </div>
+  </div>
+  <div class="small" style="margin-top:16px">PR на одну строку · ревью за 10 секунд · <b class="good">success rate 3/10 → 10/10</b>, вызовов на задачу 2.7 → 1.0</div>
+  <aside class="notes">Возвращаемся к багу из открытия. Вот весь фикс — одна строка, и это не код: мы сказали агенту, <strong>когда</strong> тул использовать, и дали пример, совпадающий с реальным сценарием — слово «overdue» здесь несёт функциональную нагрузку. Тот же сервер, тот же запрос — работает. <strong>Неудобный вопрос:</strong> а в обратную сторону? Конечно — кто-то «улучшит» описание перед релизом и сломает сценарий в продакшене.</aside>
+</section>
+
+<!-- ===== 13 ===== -->
+<section class="slide" data-block="Анатомия description">
+  <div class="eyebrow"><span>Анатомия · точка отказа 1/3 — не выбрал</span><span>13 / 24</span></div>
+  <h1>Description отвечает на вопрос <span class="hl">«когда»</span>, а не «что»</h1>
+  <div class="col" style="gap:20px">
+    <div>
+      <div class="lbl"><span class="xmark">✗</span> как пишет разработчик — что делает внутри</div>
+      <pre><span class="badc">"Queries items using filter"</span></pre>
+    </div>
+    <div>
+      <div class="lbl"><span class="vmark">✓</span> как читает агент — когда звать + пример</div>
+      <pre><span class="s">"Search tasks by assignee and/or status.
+ Use this to find, count or list tasks
+ (e.g. all overdue tasks for a person)."</span></pre>
+    </div>
+    <div class="small">Первое предложение — сценарий использования. Пример — похожий на реальные запросы пользователей: слово <code>overdue</code> связало запрос про «просроченные» с тулом.</div>
+  </div>
+  <aside class="notes">Разработчик пишет description как javadoc: что функция делает. Агенту нужен ответ на другой вопрос: <strong>когда тебя звать</strong>. Первое предложение — сценарий использования, дальше пример, похожий на реальные запросы пользователей. Это не украшение — мы видели на диффе, что именно пример связал запрос про «просроченные» с тулом.</aside>
+</section>
+
+<!-- ===== 14 ===== -->
+<section class="slide" data-block="Анатомия description">
+  <div class="eyebrow"><span>Анатомия · точка отказа 1/3 — не выбрал</span><span>14 / 24</span></div>
+  <h1>Тулы конкурируют: <span class="hl">разграничивать</span>, а не множить</h1>
+  <div class="cols">
+    <div class="col">
+      <div class="lbl">Перекрёстные границы в описаниях</div>
+<pre>search_tasks:
+  "…<span class="k">For aggregated statistics
+   use get_task_report.</span>"
+
+get_task_report:
+  "…<span class="k">For finding individual
+   tasks use search_tasks.</span>"</pre>
+    </div>
+    <div class="col">
+      <ul class="pts" style="font-size:18px">
+        <li>Агент выбирает не «подходит ли тул», а «какой из 40 лучше»</li>
+        <li>Каждый тул занимает контекст; после ~20–30 качество выбора падает</li>
+        <li>Иногда решение — не улучшить описание, а <b>объединить или убрать</b> тулы</li>
+      </ul>
+      <div class="small" style="margin-top:auto;border-top:1px solid var(--line);padding-top:12px">⚠ Раз текст исполняем — его можно атаковать: description — ещё и attack surface (tool poisoning). Ревью description = ещё и security-ревью.</div>
+    </div>
+  </div>
+  <aside class="notes">Агент выбирает не «подходит ли тул», а «какой из сорока лучше». Похожие тулы разграничивайте прямо в описаниях, перекрёстно — иначе агент выбирает практически наугад. Про количество: каждый тул — текст в контексте, внимание модели ограничено; иногда лучшее решение — удалить тул. <strong>Одна строка про безопасность:</strong> вредоносная инструкция в description стороннего сервера будет прочитана моделью как команда. Ревью description — это ещё и security-ревью.</aside>
+</section>
+
+<!-- ===== 15 ===== -->
+<section class="slide" data-block="Анатомия description">
+  <div class="eyebrow"><span>Анатомия · точки отказа 2–3 — не так вызвал / не так понял</span><span>15 / 24</span></div>
+  <h1>Схема, ошибки, результат — <span class="hl">тоже промпт</span></h1>
+  <div class="cols">
+    <div class="col">
+      <div class="lbl"><span class="xmark">✗</span> «угадай формат сам» → <span class="vmark">✓</span> схема сужает ошибки</div>
+<pre style="font-size:14px"><span class="badc">query_items(filter: string)</span>
+
+<span class="s">search_tasks(
+  assignee?: string,
+  status?: "open"|"in_progress"|"overdue"|"done",
+  due_before?: string  <span class="c">// ISO, e.g. 2026-07-15</span>
+)</span></pre>
+      <div class="small" style="margin-top:10px">enum вместо строки — модель физически не пришлёт статус вне списка. Дефолты опишите словами.</div>
+    </div>
+    <div class="col" style="gap:14px">
+      <div class="col card"><div class="lbl">Ошибка — tool-level, не protocol-level</div>
+        <div class="small" style="font-size:15px"><b style="color:var(--text)">protocol-level</b> — «сервер сломался», агент видит сбой. <b style="color:var(--text)">tool-level</b> — текст для модели: сюда валидацию, с форматом и примером → агент исправится сам.</div></div>
+      <div class="col card"><div class="lbl">Результат — материал для шага</div>
+        <div class="small" style="font-size:15px">Не дамп на 40 полей с id и null'ами, а то, из чего делается следующий шаг диалога.</div></div>
+    </div>
+  </div>
+  <div class="banner">Всё неописанное агент домыслит сам. Ошибку и результат он <b>читает</b> — пишите их для него</div>
+  <aside class="notes">Две точки отказа сразу — как агент вызывает тул и как читает ответ. <strong>Слева, точка 2:</strong> <code>filter: string</code> — приглашение домыслить формат; говорящие имена, enum вместо строки и пример у каждого параметра сужают пространство ошибок лучше серверной валидации. Схема — тоже промпт. <strong>Справа, точка 3:</strong> в MCP два уровня ошибок; валидация должна быть tool-level — тогда модель видит её как текст и может исправиться, а не как сбой сервера. И результат тула модель тоже читает — отдавайте материал для следующего шага, а не дамп. Всё это, заметьте, детерминированный текст — а значит, его можно поставить под обычный тест. К этому вернёмся через два слайда.</aside>
+</section>
+
+<!-- ===== 16 ===== -->
+<section class="slide" data-block="Анатомия description">
+  <div class="eyebrow"><span>Анатомия · точка отказа 3/3 — не так понял</span><span>16 / 24</span></div>
+  <h1>Лучшая ошибка — <span class="hl">та, которой не случилось</span></h1>
+  <figure class="shot" data-src="shots/shot-5.png" style="flex:1">
+    <div class="shot-tag">Скрин №5</div>
+    <div class="shot-desc">Задача: «срок 5 августа 2026 к 18:00». Три столбца, видна цепочка вызов→ошибка→повтор. v1: due_date "2026-08-05T18:00" → «Error: Invalid date» → "2026-08-05" → ок. v1err: "2026-08-05T18:00" → «Invalid due_date: expected ISO date like …, got …» → сразу "2026-08-05" → ок. v2: "2026-08-05" с первого раза, ошибки нет.</div>
+  </figure>
+  <div class="cols" style="flex:0 0 auto;margin-top:16px">
+    <div class="col card"><div class="lbl">вызовов до успеха · Sonnet ×10</div>
+      <div style="font-size:18px">v1 <b class="badc">3.4</b> · v1err <b>2.0</b> · v2 <b class="good">1.0</b> · <span class="small">успех везде 10/10, разница целиком в цене</span></div></div>
+    <div class="col card"><div class="lbl">контрпример</div>
+      <div style="font-size:16px;color:var(--muted)">Пустой список — не ошибка. Там хороший текст ошибки не дал <b>ничего</b>: 3/10 и на v1, и на v1err.</div></div>
+  </div>
+  <aside class="notes">Здесь три версии одного сервера, отличаются только текстом. <strong>v1</strong>: ошибка «Invalid date» без формата — агент перебирает варианты без ориентира, три с половиной вызова на задачу. <strong>v1err</strong>: тот же плохой description, но в ошибке есть формат и пример — агент исправляется с первой попытки, два вызова. Вот цена текста ошибки, выраженная числом. <strong>v2</strong>: формат указан в описании параметра — ошибки не происходит вообще, один вызов. Отсюда правило: <strong>сообщение об ошибке — это страховка, а не решение</strong>; сначала опишите формат, чтобы ошибки не было, и только потом делайте её текст пригодным для самоисправления. И контрпример справа внизу, важный: в сценарии из открытия сервер на непонятный фильтр возвращает пустой список — это не ошибка, агенту нечего читать. Улучшение текстов ошибок не сдвинуло там ничего: три из десяти было, три и осталось. <strong>Молчаливый пустой ответ никаким текстом ошибки не лечится</strong> — только описанием.</aside>
+</section>
+
+<!-- ===== 17 ===== -->
+<section class="slide" data-block="Под тест">
+  <div class="eyebrow"><span>Стенд экспериментов</span><span>17 / 24</span></div>
+  <h1>MCP-сервер трекера задач: <span class="hl">какие тулы он предоставляет</span></h1>
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <div class="lbl">что это</div>
+        <ul class="pts" style="font-size:16.5px">
+          <li>In-memory трекер задач · Java + Spring Boot + Spring AI, транспорт stdio</li>
+          <li>Сид: <b>8 задач</b>, у Алексея <b class="badc">3 просроченные</b> (T-1…T-3) — тот самый сценарий из открытия</li>
+          <li>Один сервер, <b>4 профиля контракта</b> (v1 · v1err · v1b · v2): меняется только текст описаний, логика одна</li>
+        </ul>
+      </div>
+      <div class="small" style="margin-top:auto">В открытии вы видели v1-версию первого тула — <code>query_items(filter)</code>. Справа он же в контракте v2 (для модели), <code>search_tasks</code>.</div>
+    </div>
+    <div class="col">
+      <div class="lbl">тулы, которые сервер отдаёт агенту (v2)</div>
+      <table class="tbl">
+        <tr><th>Тул</th><th>Что делает</th></tr>
+        <tr class="hi"><td><code>search_tasks</code><div class="small" style="font-size:12px;margin-top:2px">assignee? · status? · due_before?</div></td><td>Найти, сосчитать или перечислить задачи</td></tr>
+        <tr><td><code>create_task</code><div class="small" style="font-size:12px;margin-top:2px">title · assignee? · due_date?</div></td><td>Создать задачу</td></tr>
+        <tr><td><code>update_task</code><div class="small" style="font-size:12px;margin-top:2px">id · title? · status? · …</div></td><td>Изменить задачу</td></tr>
+        <tr><td><code>get_task_report</code><div class="small" style="font-size:12px;margin-top:2px">без параметров</div></td><td>Сводка по статусам</td></tr>
+      </table>
+      <div class="small"><code>status</code> — enum: <code>open · in_progress · overdue · done</code></div>
+    </div>
+  </div>
+  <div class="banner">Ровно эти четыре действия агент выбирает по описаниям — на них и ставим все замеры</div>
+  <aside class="notes">Прежде чем перейти к тому, как мы это тестировали, познакомимся со стендом — он проходит через весь доклад. Это маленький <strong>трекер задач, поднятый как MCP-сервер</strong>: Java, Spring Boot, Spring AI, транспорт stdio, данные в памяти. В сиде восемь задач, у Алексея три просроченные — те самые T-1, T-2, T-3 из открытия, поэтому сценарий «найди просроченные Алексея» и живёт. Ключевое для экспериментов: это <strong>один и тот же сервер в четырёх профилях контракта</strong> — v1, v1err, v1b, v2; между ними меняется только текст описаний и формулировки ошибок, доменная логика идентична. <strong>Справа — что сервер отдаёт агенту в человеческой версии v2:</strong> четыре тула — найти задачи, создать, изменить, построить отчёт; статус — enum из четырёх значений. В открытии вы уже видели первый тул в плохой v1-версии, query_items с одним строковым фильтром, — это тот же самый поиск. Вот эти четыре действия агент и выбирает по описаниям, и именно на них мы ставим все замеры дальше.</aside>
+</section>
+
+<!-- ===== 18 ===== -->
+<section class="slide" data-block="Под тест">
+  <div class="eyebrow"><span>Как поставить под тест · обзор</span><span>18 / 24</span></div>
+  <h1>Пирамида тестов MCP-сервера — <span class="hl">четыре уровня</span></h1>
+  <table class="tbl">
+    <tr><th>Уровень</th><th>Что проверяет</th><th>Вердикт</th></tr>
+    <tr><td><code>TaskStoreTest</code> · юнит</td><td>Доменная логика: поиск, создание, отчёт</td><td class="good">детерминирован</td></tr>
+    <tr class="hi"><td><code>ToolBehaviourTest</code> · поведение тула</td><td>Что <b>получает агент</b>: форма ответа и <b>тексты ошибок</b></td><td class="good">детерминирован</td></tr>
+    <tr class="hi"><td><code>ToolsListSnapshotTest</code> · снимок</td><td>Контракт <code>tools/list</code>: имена, описания, схемы</td><td class="good">детерминирован</td></tr>
+    <tr><td><code>eval-харнесс</code> · сценарии</td><td>Задача агентом целиком, success rate</td><td class="acc">вероятностный</td></tr>
+  </table>
+  <div class="banner">Три нижних уровня — как у любого сервиса, в CI на каждый коммит. Новое: под тест попал <b>текст</b> — описания и ошибки стали функциональными (подсвечены)</div>
+  <aside class="notes">Прежде чем переходить к приёмам — карта, куда что ложится. Обычный сервис тестируют пирамидой; MCP-сервер тоже сервис, три нижних уровня знакомые. <strong>Юнит</strong> — доменная логика, быстро и детерминированно. <strong>Поведение тула</strong> — а вот это уже специфично: проверяем не «что вернула функция», а что́ именно увидит модель — форму ответа и, главное, тексты ошибок. Тоже детерминированно, обычный юнит-тест. <strong>Снимок tools/list</strong> — фиксируем весь контракт, любая правка описания видна в ревью. И только верхний уровень новый по-настоящему — <strong>eval</strong>, вероятностный. Ключевая мысль слайда: подсвечены два средних уровня, потому что в них под тест попал текст — описания и ошибки, которые в обычном сервисе были декорацией, здесь функциональны. Дальше по одному приёму на каждый.</aside>
+</section>
+
+<!-- ===== 19 ===== -->
+<section class="slide" data-block="Под тест">
+  <div class="eyebrow"><span>Как поставить под тест · рубеж 1 — детерминированный</span><span>19 / 24</span></div>
+  <h1>Текст контракта — <span class="hl">под обычный тест</span>, без участия агента</h1>
+  <div class="cols">
+    <div class="col">
+      <div class="lbl">Поведение тула: ассерт на текст, который читает модель</div>
+<pre style="font-size:13px"><span class="c">// текст ошибки — часть контракта, пиним его</span>
+<span class="k">@Test</span> void errorGuidesModel() {
+  var r = tools.createTask("Отчёт", null, "завтра");
+  assertThat(text(r)).matches(
+    <span class="s">"Invalid due_date: expected ISO date "</span>
+    + <span class="s">"like \d{4}-\d{2}-\d{2}, got \"завтра\"…"</span>);
+}
+<span class="c">// «Error: Invalid date» тест бы не принял</span></pre>
+      <div class="small">Форма ответа, пустой результат, тексты ошибок — детерминированы. Обычный юнит-тест.</div>
+    </div>
+    <div class="col">
+      <div class="lbl">Снимок tools/list: правка описания роняет сборку</div>
+      <figure class="shot" data-src="shots/shot-6.png" style="flex:1">
+        <div class="shot-tag">Скрин №6</div>
+        <div class="shot-desc">Код snapshot-теста + упавший тест с диффом description «причёсанного» перед релизом.</div>
+      </figure>
+    </div>
+  </div>
+  <div class="banner">Оба детерминированы и гоняются в CI на каждый коммит. Ловят «безобидную» правку текста <b>до</b> релиза</div>
+  <aside class="notes">Два детерминированных приёма, оба про текст контракта, оба ловят регресс до релиза. <strong>Слева — behaviour-тест:</strong> текст ошибки читает модель, значит он функционален, значит пиним его ассертом. Вот реальный тест из репозитория: проверяем, что ошибка даты содержит формат и пример. Если кто-то «упростит» её до «Error: Invalid date» — тест красный. Так же тестируем форму ответа и то, что пустая выборка описана словами, а не голым []. Всё это детерминированно — никакого агента, обычный JUnit. <strong>Справа — снимок tools/list:</strong> фиксируем весь контракт целиком; правка описания роняет сборку и попадает в ревью отдельным диффом, а не в прод под видом «поправил опечатки». Оба уровня — в CI на каждый коммит. Но они ловят факт и текст; сработает ли контракт на живой модели — покажет только eval.</aside>
+</section>
+
+<!-- ===== 20 ===== -->
+<section class="slide" data-block="Под тест">
+  <div class="eyebrow"><span>Как поставить под тест · рубеж 2</span><span>20 / 24</span></div>
+  <h1>Как собиралась статистика: <span class="hl">один сервер, четыре контракта</span></h1>
+  <div class="chain">
+    <div class="node">Задача на естественном языке<em>одна на все версии</em></div><div class="arr">→</div>
+    <div class="node">Свежая сессия агента + только наш сервер</div><div class="arr">→</div>
+    <div class="node">Проверка итогового состояния<em>«задача решена?», не «какие тулы вызвал»</em></div><div class="arr">→</div>
+    <div class="node">× N прогонов<em>вердикт — частота</em></div>
+  </div>
+  <div class="cols" style="margin-top:26px;flex:0 1 auto">
+    <div class="col card"><div class="lbl">Что меняем</div><div class="small" style="font-size:16px">Один и тот же сервер в 4 профилях: <b>v1 · v1err · v1b · v2</b>. Между ними меняется только текст контракта — по одному фактору за раз.</div></div>
+    <div class="col card"><div class="lbl">Кто агент</div><div class="small" style="font-size:16px"><code>claude -p</code> в headless: каждый прогон — отдельный процесс с чистым контекстом. Полная изоляция.</div></div>
+    <div class="col card"><div class="lbl">Что меряем</div><div class="small" style="font-size:16px">Success rate <b>и число вызовов до успеха</b>: плохой контракт часто не роняет сценарий, а дорожает.</div></div>
+    <div class="col card"><div class="lbl">Чем проверяем</div><div class="small" style="font-size:16px">Состояние трекера детерминированно, где можно; <b>LLM-судья</b> — где итог не свести к точному значению.</div></div>
+  </div>
+  <aside class="notes">Как мы это делали конкретно — чтобы каждую цифру можно было воспроизвести. <strong>Один и тот же сервер, четыре профиля контракта:</strong> между ними меняется только текст, по одному фактору за раз, поэтому разницу в результате можно приписать именно тексту, а не коду. <strong>Агент — Claude Code в headless-режиме, claude -p:</strong> каждый прогон это отдельный процесс с чистым контекстом, поэтому агент не переиспользует удачный формат из прошлой попытки. Проверяем <strong>итоговое состояние, а не путь</strong>: какими тулами агент решил задачу — не важно; прогоняем по десять раз, потому что вердикт вероятностный. И меряем <strong>две вещи</strong> — прошёл или нет и сколько вызовов ушло на успех: вторую метрику разберём на следующем слайде, а в деле увидите в таблице — без неё половина картины теряется. На случай вопросов: сбойные прогоны, где агент вообще не запустился, харнесс исключает из метрики; где состояние не проверить детерминированно — берём LLM-судью.</aside>
+</section>
+
+<!-- ===== 21 ===== -->
+<section class="slide" data-block="Под тест">
+  <div class="eyebrow"><span>Как поставить под тест · единицы измерения</span><span>21 / 24</span></div>
+  <h1>Две метрики, и обе <span class="hl">не «pass/fail»</span> — как читать таблицу</h1>
+  <div class="cols">
+    <div class="col card">
+      <div class="lbl" style="color:var(--amber)">Метрика 1 · success rate</div>
+      <div style="font-size:40px;font-family:var(--mono);line-height:1;margin:4px 0 8px"><b class="acc">N&nbsp;/&nbsp;10</b></div>
+      <div class="small" style="font-size:15.5px">Один сценарий прогоняем <b>10 раз</b>. Success rate — сколько прогонов дошли до верного результата.</div>
+      <div class="rate" style="margin-top:14px"><i class="f"></i><i></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i class="f"></i><i class="f"></i><i></i><i class="f"></i></div>
+      <div class="small" style="margin-top:8px">на картинке — <b>3 из 10</b></div>
+      <ul class="pts" style="font-size:15.5px;margin-top:14px">
+        <li>Единица — <b>доля</b>, не булево: поведение агента вероятностно</li>
+        <li><code>10/10</code> — стабильно · <code>3/10</code> — «иногда срабатывает»</li>
+        <li>Приёмка по <b>порогу</b> (напр. ≥ 8/10), а не по точному числу</li>
+      </ul>
+    </div>
+    <div class="col card" style="border-color:rgba(232,163,61,.4)">
+      <div class="lbl" style="color:var(--amber)">Метрика 2 · вызовов до успеха</div>
+      <div style="font-size:40px;font-family:var(--mono);line-height:1;margin:4px 0 8px"><b>1.0&nbsp;<span style="color:var(--dim)">…</span>&nbsp;4.6</b></div>
+      <div class="small" style="font-size:15.5px">Среднее число обращений агента к тулу, пока задача не решена (по успешным прогонам). <b>Меньше — лучше.</b></div>
+      <ul class="pts" style="font-size:15.5px;margin-top:14px">
+        <li><code>1.0</code> — верный вызов сразу (идеал)</li>
+        <li><code>4.6</code> — многократный перебор: дорого по токенам и времени</li>
+        <li>Нужна, потому что success rate часто <code>10/10</code> у обоих контрактов — <b>разница прячется в цене</b></li>
+      </ul>
+    </div>
+  </div>
+  <div class="banner">Цвет в таблице: <span class="good">■</span> идеал — 100% и один вызов · <span class="badc">■</span> провал или дорогой перебор. Обе метрики — для <b>конкретной модели</b> (в таблице их две: Sonnet и Haiku)</div>
+  <aside class="notes">Прежде чем показать таблицу — договоримся, в чём меряем, потому что ни одной привычной единицы здесь нет. <strong>Первая метрика — success rate, N из 10.</strong> Каждый сценарий гоняем десять раз и считаем, в скольких прогонах агент дошёл до верного результата. Это не «прошёл/не прошёл», а доля: поведение вероятностно, поэтому единица — частота. Десять из десяти — контракт стабилен; три из десяти — срабатывает иногда. Приёмку вешаем на порог, например не ниже восьми из десяти. <strong>Вторая метрика — среднее число вызовов тула до успеха.</strong> По успешным прогонам: сколько раз агент вызвал тул, пока не решил задачу. Единица — счётчик обращений, и чем он меньше, тем лучше: один вызов — попал сразу, четыре с половиной — перебирал варианты, а это прямые токены и секунды. Зачем она нужна: часто success rate у плохого и хорошего контракта одинаковый, десять из десяти, и по нему разницы не видно — вся деградация сидит в числе вызовов. <strong>Как раскрашена таблица:</strong> зелёным — идеал, сто процентов и один вызов; красным — провал или дорогой перебор. И главное: любая из этих цифр привязана к конкретной модели — поэтому дальше две таблицы, Sonnet и Haiku, с разными числами на одном и том же сервере.</aside>
+</section>
+
+<!-- ===== 22 ===== -->
+<section class="slide" data-block="Под тест">
+  <div class="eyebrow"><span>Как поставить под тест · рубеж 2</span><span>22 / 24</span></div>
+  <h1>Субъективное «агент не понимает» стало <span class="hl">метрикой</span> — и выявило регресс</h1>
+  <div class="cols">
+    <div class="col">
+      <table class="tbl ev">
+        <caption>Sonnet · 10 прогонов на сценарий</caption>
+        <tr><th>сценарий</th><th>v1</th><th>v1err</th><th>v1b</th><th>v2</th></tr>
+        <tr><td>overdue-alexey</td><td class="b">3/10</td><td class="b">3/10</td><td class="g">10/10</td><td class="g">10/10</td></tr>
+        <tr class="calls"><td>вызовов</td><td>2.7</td><td>2.3</td><td>1.0</td><td>1.0</td></tr>
+        <tr><td>create-date</td><td>10/10</td><td>10/10</td><td>10/10</td><td>10/10</td></tr>
+        <tr class="calls"><td>вызовов</td><td>3.4</td><td class="g">2.0</td><td>3.4</td><td class="g">1.0</td></tr>
+        <tr><td>tasks-per-person</td><td>10/10</td><td>10/10</td><td>10/10</td><td>10/10</td></tr>
+        <tr class="calls"><td>вызовов</td><td>3.2</td><td>3.2</td><td class="b">4.6</td><td class="g">1.0</td></tr>
+      </table>
+      <table class="tbl ev" style="margin-top:6px">
+        <caption>Haiku · те же сценарии</caption>
+        <tr><th>сценарий</th><th>v1</th><th>v1err</th><th>v1b</th><th>v2</th></tr>
+        <tr><td>overdue-alexey</td><td class="b">8/10</td><td>9/10</td><td class="g">10/10</td><td class="g">10/10</td></tr>
+        <tr class="calls"><td>вызовов</td><td>5.2</td><td>6.6</td><td>1.0</td><td>1.0</td></tr>
+        <tr><td>create-date</td><td>10/10</td><td>10/10</td><td>10/10</td><td>10/10</td></tr>
+        <tr class="calls"><td>вызовов</td><td>2.2</td><td>2.0</td><td>2.7</td><td>1.0</td></tr>
+        <tr><td>tasks-per-person</td><td>9/10</td><td>10/10</td><td>10/10</td><td>10/10</td></tr>
+        <tr class="calls"><td>вызовов</td><td>2.4</td><td>2.5</td><td>1.8</td><td>1.0</td></tr>
+      </table>
+    </div>
+    <div class="col" style="flex:0 0 400px">
+      <div class="card" style="padding:16px 18px">
+        <div class="lbl" style="color:var(--amber);font-family:var(--mono);font-size:12px;letter-spacing:.1em">РЕГРЕСС ОТ УЛУЧШЕНИЯ</div>
+        <p style="font-size:16px;margin:8px 0 12px">Правка v1→v1b подняла <code>overdue-alexey</code> с 3/10 до 10/10 — и сломала выбор тула в другом сценарии:</p>
+        <div style="font-family:var(--mono);font-size:13.5px;line-height:1.9">
+          <div><span style="color:var(--dim)">v1&nbsp;&nbsp;</span> query_items ×2 → <span class="vmark">get_report</span></div>
+          <div><span style="color:var(--dim)">v1b&nbsp;</span> query_items <span class="xmark">×5</span>, отчёт не найден</div>
+          <div><span style="color:var(--dim)">v2&nbsp;&nbsp;</span> <span class="vmark">get_task_report</span> — один вызов</div>
+        </div>
+        <p style="font-size:15px;color:var(--muted);margin-top:12px">Snapshot-дифф показал бы здесь только улучшение. Регресс виден единственным способом — прогоном.</p>
+      </div>
+      <div class="card" style="padding:14px 18px;margin-top:14px">
+        <div class="lbl">напоминание · единицы измерения — на предыдущем слайде</div>
+        <div style="font-size:14.5px;line-height:1.65">
+          <div><code>N/10</code> — success rate · <code>вызовов</code> — среднее до успеха (меньше — лучше)</div>
+          <div style="margin-top:6px"><span class="good">■</span> 100% и один вызов &nbsp;·&nbsp; <span class="badc">■</span> провал / дорогой перебор</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Наш сервер из открытия под eval'ом. <strong>Слева вверху</strong>: старое описание — три из десяти, новое — десять. Баг, невидимый для юнит-тестов, <strong>выражен числом</strong>. Обратите внимание на строку «вызовов»: на двух других сценариях success rate везде 10/10, и по нему версии неразличимы — а цена успеха отличается втрое. <strong>Бинарный pass/fail деградацию контракта не видит.</strong> Вторая таблица — та же задача на другой модели: на плохом контракте Haiku даёт восемь из десяти против трёх у Sonnet. Модель посильнее сдаётся раньше и говорит пользователю, что сервер сломан; послабее — продолжает перебор и в итоге доходит до результата. То есть <strong>success rate вашего сервера зависит от модели, которую выбирает хост, а не вы</strong>: на v2 обе дают 100% и один вызов, на v1 разница между моделями — пятьдесят процентных пунктов. <strong>Справа</strong> — самое неприятное. Мы улучшили описание поиска, сценарий из открытия починился. И в другом сценарии агент, поверив в улучшенный поиск, перестал доходить до отчёта — стало дороже, чем было. Правка объективно хорошая, ревью пропустит не глядя, snapshot покажет один плюс. Ловится только прогоном.</aside>
+</section>
+
+<!-- ===== 23 ===== -->
+<section class="slide" data-block="Под тест">
+  <div class="eyebrow"><span>Как поставить под тест</span><span>23 / 24</span></div>
+  <h1>Ограничения и <span class="hl">стоимость</span> eval'ов</h1>
+  <div class="cols">
+    <div class="col card">
+      <div class="lbl" style="color:var(--bad)">Eval'ы не дают</div>
+      <ul class="pts">
+        <li>Детерминизма</li>
+        <li>Скорости (наши 240 прогонов — ~15 минут)</li>
+        <li>Бесплатности</li>
+        <li>Стабильной базы сравнения: сменилась модель — сменились числа</li>
+      </ul>
+    </div>
+    <div class="col card" style="border-color:rgba(79,195,138,.35)">
+      <div class="lbl" style="color:var(--ok)">Как применять</div>
+      <ul class="pts" style="font-size:17px">
+        <li>Порог (например, ≥ 8/10) вместо точного числа</li>
+        <li>Фиксированный набор задач</li>
+        <li>Запускать на изменения description/схем и перед релизом — не на каждый коммит</li>
+        <li>N=10 на сценарий — единицы долларов ($4.90 за все наши прогоны)</li>
+        <li>Фиксировать модель в прогоне и писать её рядом с числом</li>
+        <li>Проверка — детерминированно; LLM-судья только там, где иначе нельзя</li>
+      </ul>
+    </div>
+  </div>
+  <div class="banner">Это не замена вашей пирамиде тестов — это новый этаж над ней</div>
+  <aside class="notes">Честно об ограничениях: eval'ы недетерминированы, небыстры и стоят денег. Наши цифры для калибровки: 240 прогонов — пятнадцать минут и пять долларов. Это дёшево, но не бесплатно, поэтому пороги вместо точных чисел и запуск по триггеру «изменился текст контракта», а не на каждый коммит. И четвёртый пункт, который мы поняли на собственном опыте: <strong>число без указания модели бессмысленно</strong> — на одном и том же сервере разные модели дают разный success rate, так что модель фиксируется в прогоне и пишется рядом с результатом. Это не замена вашей пирамиде тестов — это <strong>новый этаж над ней</strong>.</aside>
+</section>
+
+<!-- ===== 24 ===== -->
+<section class="slide" data-block="Финал">
+  <div class="eyebrow"><span>Финал · сфотографируйте этот слайд</span><span>24 / 24</span></div>
+  <h1>Чек-лист description-ревью</h1>
+  <div class="cols" style="flex:1">
+    <div class="col" style="flex:2.6;justify-content:flex-start">
+      <ol class="check">
+        <li><i>01</i><span>Первое предложение — <b>когда</b> использовать, не что делает внутри</span></li>
+        <li><i>02</i><span>Пример, похожий на реальные запросы</span></li>
+        <li><i>03</i><span>Похожие тулы разграничены перекрёстно</span></li>
+        <li><i>04</i><span>Параметры: говорящие имена, enum вместо строк, формат + пример</span></li>
+        <li><i>05</i><span>Дефолты описаны словами</span></li>
+        <li><i>06</i><span>Ошибки — tool-level, с форматом и примером для самоисправления</span></li>
+        <li><i>07</i><span>Результат — материал для следующего шага, не дамп</span></li>
+        <li><i>08</i><span>Behaviour-тест на тексты ошибок и форму ответа</span></li>
+        <li><i>09</i><span>Snapshot-тест на tools/list</span></li>
+        <li><i>10</i><span>Eval на ключевые сценарии, порог по success rate</span></li>
+      </ol>
+      <div class="thesis" style="font-size:22px;margin-top:auto">В API для людей текст <span style="color:var(--muted)">описывал</span> контракт.<br>В API для агентов текст — <span class="acc">и есть контракт</span>.</div>
+    </div>
+    <div class="col" style="flex:1">
+      <figure class="shot" data-src="shots/qr.png" style="max-height:260px">
+        <div class="shot-tag">QR</div>
+        <div class="shot-desc">QR-код на репозиторий: сервер v1/v2, snapshot-тест, eval-харнесс, чек-лист</div>
+      </figure>
+      <div class="small">Репозиторий: обе версии сервера, тесты, eval-харнесс — каждую цифру можно воспроизвести.<br><br>Контакты докладчика</div>
+    </div>
+  </div>
+  <aside class="notes">Всё сказанное — в один чек-лист; половина пунктов проверяется глазами за десять минут на ближайшем ревью. <strong>Закрывающая мысль:</strong> пока индустрия спорит, заменит ли ИИ тестировщиков, появился слой тестирования, где пока почти никого нет, — семантика контракта. Формулировка description — теперь тест-артефакт, вероятностный вердикт — нормальный результат теста. Кто-то в команде должен этим владеть. По-моему, это мы. В репозитории по QR — весь стенд с сегодняшних скринов. <strong>Вопросы!</strong></aside>
+</section>
+
+</template>
+
+<script>
+(function(){
+  var stage=document.getElementById('stage');
+  stage.appendChild(document.getElementById('slides').content.cloneNode(true));
+  var slides=[].slice.call(stage.querySelectorAll('.slide'));
+  var bar=document.getElementById('bar'),count=document.getElementById('count'),notes=document.getElementById('notes');
+  var i=0;
+
+  // screenshots: swap placeholder for image when file exists next to deck (shots/*.png)
+  [].forEach.call(stage.querySelectorAll('.shot[data-src]'),function(f){
+    var img=new Image();
+    img.onload=function(){f.appendChild(img);f.classList.add('has-img');};
+    img.src=f.getAttribute('data-src');
+  });
+
+  function show(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach(function(s,k){s.classList.toggle('on',k===i);});
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    count.textContent=(i+1)+' / '+slides.length;
+    var a=slides[i].querySelector('.notes');
+    notes.innerHTML=a?('<b style="font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--amber)">ЗАМЕТКИ · СЛАЙД '+(i+1)+'</b><br>'+a.innerHTML):'';
+    location.hash=i+1;
+  }
+  function fit(){
+    var s=Math.min(innerWidth/1280,innerHeight/720);
+    stage.style.transform='translate(-50%,-50%) scale('+s+')';
+  }
+  addEventListener('resize',fit);
+  addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown') show(i+1);
+    else if(e.key==='ArrowLeft'||e.key==='PageUp') show(i-1);
+    else if(e.key==='Home') show(0);
+    else if(e.key==='End') show(slides.length-1);
+    else if(e.key==='n'||e.key==='N') notes.classList.toggle('show');
+  });
+  stage.addEventListener('click',function(e){ show(e.clientX>innerWidth/2? i+1 : i-1); });
+  fit();
+  show((parseInt(location.hash.slice(1),10)||1)-1);
+})();
+</script>
